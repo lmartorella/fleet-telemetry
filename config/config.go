@@ -21,6 +21,7 @@ import (
 	"github.com/teslamotors/fleet-telemetry/datastore/googlepubsub"
 	"github.com/teslamotors/fleet-telemetry/datastore/kafka"
 	"github.com/teslamotors/fleet-telemetry/datastore/kinesis"
+	"github.com/teslamotors/fleet-telemetry/datastore/mqtt"
 	"github.com/teslamotors/fleet-telemetry/datastore/simple"
 	"github.com/teslamotors/fleet-telemetry/datastore/zmq"
 	logrus "github.com/teslamotors/fleet-telemetry/logger"
@@ -69,6 +70,9 @@ type Config struct {
 
 	// ZMQ configures a zeromq socket
 	ZMQ *zmq.Config `json:"zmq,omitempty"`
+
+	// Mqtt configures a MQTT socket
+	Mqtt *mqtt.Config `json:"mqtt,omitempty"`
 
 	// Namespace defines a prefix for the kafka/pubsub topic
 	Namespace string `json:"namespace,omitempty"`
@@ -310,6 +314,17 @@ func (c *Config) ConfigureProducers(airbrakeHandler *airbrake.AirbrakeHandler, l
 			return nil, err
 		}
 		producers[telemetry.ZMQ] = zmqProducer
+	}
+
+	if _, ok := requiredDispatchers[telemetry.Mqtt]; ok {
+		if c.Mqtt == nil {
+			return nil, errors.New("Expected Mqtt to be configured")
+		}
+		mqttProducer, err := mqtt.NewMqttProtoLogger(c.Mqtt, logger)
+		if err != nil {
+			return nil, err
+		}
+		producers[telemetry.Mqtt] = mqttProducer
 	}
 
 	dispatchProducerRules := make(map[string][]telemetry.Producer)
