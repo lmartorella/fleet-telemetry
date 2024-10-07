@@ -8,3 +8,4 @@ vendor/
 config-local.json
 temp
 test/integration/test-certs/
+myserver/
