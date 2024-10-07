@@ -29,8 +29,9 @@ type MqttProtoLogger struct {
 
 // NewProtoLogger initializes the parameters for protobuf payload logging
 func NewMqttProtoLogger(config *Config, logger *logrus.Logger) (telemetry.Producer, error) {
+	fmt.Println("Starting MQTT")
 	opts := MQTT.NewClientOptions()
-	opts.AddBroker("localhost")
+	opts.AddBroker("tcp://localhost:1883")
 	opts.SetClientID("fleet-telemetry")
 	client := MQTT.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {

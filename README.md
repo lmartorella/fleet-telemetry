@@ -128,7 +128,7 @@ spec:
 ---
 apiVersion: v1
 kind: Service
-metadata:
+metadata:gob
   name: fleet-telemetry
 spec:
   selector:
