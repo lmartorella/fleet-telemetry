@@ -17,7 +17,8 @@ type MessageInfo map[string]interface{}
 
 type Config struct {
 	// Verbose controls whether types are explicitly shown in the logs. Only applicable for record type 'V'.
-	Verbose bool `json:"verbose"`
+	Verbose bool   `json:"verbose"`
+	Server  string `json:"server"`
 }
 
 // ProtoLogger is a simple protobuf logger
@@ -31,7 +32,7 @@ type MqttProtoLogger struct {
 func NewMqttProtoLogger(config *Config, logger *logrus.Logger) (telemetry.Producer, error) {
 	fmt.Println("Starting MQTT")
 	opts := MQTT.NewClientOptions()
-	opts.AddBroker("tcp://localhost:1883")
+	opts.AddBroker(config.Server)
 	opts.SetClientID("fleet-telemetry")
 	client := MQTT.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
@@ -59,7 +60,8 @@ func (p *MqttProtoLogger) Produce(entry *telemetry.Record) {
 		err1 = err
 	} else {
 		topic = "fleet-telemetry/v"
-		msg1, err := json.Marshal(MessageInfo{"vin": entry.Vin, "metadata": entry.Metadata(), "data": data})
+		// { "data": { "ChargeAmps": "0.000", "ChargeState": "Idle", "CreatedAt": "2024-10-08T20:22:14Z", "Locked": "true", "Vin": "<VIN>" } }
+		msg1, err := json.Marshal(MessageInfo{"data": data})
 		msg = msg1
 		err1 = err
 	}
