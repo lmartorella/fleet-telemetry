@@ -60,8 +60,8 @@ func (p *MqttProtoLogger) Produce(entry *telemetry.Record) {
 		err1 = err
 	} else {
 		topic = "fleet-telemetry/v"
-		// { "data": { "ChargeAmps": "0.000", "ChargeState": "Idle", "CreatedAt": "2024-10-08T20:22:14Z", "Locked": "true", "Vin": "<VIN>" } }
-		msg1, err := json.Marshal(MessageInfo{"data": data})
+		// { "ChargeAmps": "0.000", "ChargeState": "Idle", "CreatedAt": "2024-10-08T20:22:14Z", "Locked": "true", "Vin": "<VIN>" }
+		msg1, err := json.Marshal(data)
 		msg = msg1
 		err1 = err
 	}
