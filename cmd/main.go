@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	_ "go.uber.org/automaxprocs"
 
@@ -71,5 +72,6 @@ func startServer(config *config.Config, airbrakeNotifier *gobrake.Notifier, logg
 	if server.TLSConfig, err = config.ExtractServiceTLSConfig(logger); err != nil {
 		return err
 	}
-	return server.ListenAndServeTLS(config.TLS.ServerCert, config.TLS.ServerKey)
+	fmt.Println("Serving, TSL from " + config.BaseFilePath)
+	return server.ListenAndServeTLS(filepath.Join(config.BaseFilePath, config.TLS.ServerCert), filepath.Join(config.BaseFilePath, config.TLS.ServerKey))
 }

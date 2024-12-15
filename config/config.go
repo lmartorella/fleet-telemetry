@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	githubairbrake "github.com/airbrake/gobrake/v5"
@@ -28,6 +29,8 @@ const (
 
 // Config object for server
 type Config struct {
+	BaseFilePath string
+
 	// Host is the telemetry server hostname
 	Host string `json:"host,omitempty"`
 
@@ -125,9 +128,10 @@ func (c *Config) AirbrakeTlsConfig() (*tls.Config, error) {
 	if c.Airbrake.TLS == nil {
 		return nil, nil
 	}
-	caPath := c.Airbrake.TLS.CAFile
-	certPath := c.Airbrake.TLS.ServerCert
-	keyPath := c.Airbrake.TLS.ServerKey
+	fmt.Println("Reading TLS config from " + c.BaseFilePath)
+	caPath := filepath.Join(c.BaseFilePath, c.Airbrake.TLS.CAFile)
+	certPath := filepath.Join(c.BaseFilePath, c.Airbrake.TLS.ServerCert)
+	keyPath := filepath.Join(c.BaseFilePath, c.Airbrake.TLS.ServerKey)
 	tlsConfig := &tls.Config{}
 	if certPath != "" && keyPath != "" {
 		cert, err := tls.LoadX509KeyPair(certPath, keyPath)

@@ -3,8 +3,10 @@ package config
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/sirupsen/logrus/hooks/test"
 
@@ -44,7 +46,10 @@ func loadApplicationConfig(configFilePath string) (*Config, error) {
 
 	config := &Config{
 		LoggerConfig: &simple.Config{},
+		BaseFilePath: filepath.Dir(configFilePath),
 	}
+	fmt.Println("Loading config from " + configFilePath)
+
 	err = json.NewDecoder(configFile).Decode(&config)
 	if err != nil {
 		return nil, err
