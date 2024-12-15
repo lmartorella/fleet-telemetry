@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go/pubsub v1.30.0
 	github.com/airbrake/gobrake/v5 v5.6.1
 	github.com/beefsack/go-rate v0.0.0-20220214233405-116f4ca011a0
+	github.com/eclipse/paho.mqtt.golang v1.5.0
 	github.com/google/flatbuffers v23.3.3+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.3
@@ -28,7 +29,6 @@ require (
 	github.com/caio/go-tdigest/v4 v4.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/eclipse/paho.mqtt.golang v1.5.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect

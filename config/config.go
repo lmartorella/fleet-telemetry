@@ -214,7 +214,7 @@ func (c *Config) prometheusEnabled() bool {
 
 // ConfigureProducers validates and establishes connections to the producers (kafka/pubsub/logger)
 func (c *Config) ConfigureProducers(airbrakeHandler *airbrake.AirbrakeHandler, logger *logrus.Logger) (map[string][]telemetry.Producer, error) {
-	reliableAckSources, err := c.configureReliableAckSources()
+	_, err := c.configureReliableAckSources()
 	if err != nil {
 		return nil, err
 	}
