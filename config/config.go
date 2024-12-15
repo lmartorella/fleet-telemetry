@@ -1,7 +1,6 @@
 package config
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	_ "embed" //Used for default CAs
@@ -9,20 +8,13 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
-	"cloud.google.com/go/pubsub"
 	githubairbrake "github.com/airbrake/gobrake/v5"
 
-	confluent "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	githublogrus "github.com/sirupsen/logrus"
 
-	"github.com/teslamotors/fleet-telemetry/datastore/googlepubsub"
-	"github.com/teslamotors/fleet-telemetry/datastore/kafka"
-	"github.com/teslamotors/fleet-telemetry/datastore/kinesis"
 	"github.com/teslamotors/fleet-telemetry/datastore/simple"
-	"github.com/teslamotors/fleet-telemetry/datastore/zmq"
 	logrus "github.com/teslamotors/fleet-telemetry/logger"
 	"github.com/teslamotors/fleet-telemetry/metrics"
 	"github.com/teslamotors/fleet-telemetry/server/airbrake"
@@ -55,20 +47,6 @@ type Config struct {
 
 	// ReliableAckSources is a mapping of record types to a dispatcher that will be used for reliable ack
 	ReliableAckSources map[string]telemetry.Dispatcher `json:"reliable_ack_sources,omitempty"`
-
-	// Kafka is a configuration for the standard librdkafka configuration properties
-	// seen here: https://raw.githubusercontent.com/confluentinc/librdkafka/master/CONFIGURATION.md
-	// we extract the "topic" key as the default topic for the producer
-	Kafka *confluent.ConfigMap `json:"kafka,omitempty"`
-
-	// Kinesis is a configuration for AWS Kinesis
-	Kinesis *Kinesis `json:"kinesis,omitempty"`
-
-	// Pubsub is a configuration for the Google Pubsub
-	Pubsub *Pubsub `json:"pubsub,omitempty"`
-
-	// ZMQ configures a zeromq socket
-	ZMQ *zmq.Config `json:"zmq,omitempty"`
 
 	// Namespace defines a prefix for the kafka/pubsub topic
 	Namespace string `json:"namespace,omitempty"`
@@ -123,21 +101,6 @@ type RateLimit struct {
 
 	// MessageIntervalTimeSecond is the rate limit time interval as a duration in second
 	MessageIntervalTimeSecond time.Duration
-}
-
-// Pubsub config for the Google pubsub
-type Pubsub struct {
-	// GCP Project ID
-	ProjectID string `json:"gcp_project_id,omitempty"`
-
-	Publisher *pubsub.Client
-}
-
-// Kinesis is a configuration for aws Kinesis.
-type Kinesis struct {
-	MaxRetries   *int              `json:"max_retries,omitempty"`
-	OverrideHost string            `json:"override_host"`
-	Streams      map[string]string `json:"streams,omitempty"`
 }
 
 //go:embed files/eng_ca.crt
@@ -262,56 +225,6 @@ func (c *Config) ConfigureProducers(airbrakeHandler *airbrake.AirbrakeHandler, l
 		}
 	}
 
-	if _, ok := requiredDispatchers[telemetry.Kafka]; ok {
-		if c.Kafka == nil {
-			return nil, errors.New("Expected Kafka to be configured")
-		}
-		convertKafkaConfig(c.Kafka)
-		kafkaProducer, err := kafka.NewProducer(c.Kafka, c.Namespace, c.prometheusEnabled(), c.MetricCollector, airbrakeHandler, c.AckChan, reliableAckSources[telemetry.Kafka], logger)
-		if err != nil {
-			return nil, err
-		}
-		producers[telemetry.Kafka] = kafkaProducer
-	}
-
-	if _, ok := requiredDispatchers[telemetry.Pubsub]; ok {
-		if c.Pubsub == nil {
-			return nil, errors.New("Expected Pubsub to be configured")
-		}
-		googleProducer, err := googlepubsub.NewProducer(context.Background(), c.prometheusEnabled(), c.Pubsub.ProjectID, c.Namespace, c.MetricCollector, airbrakeHandler, c.AckChan, reliableAckSources[telemetry.Pubsub], logger)
-		if err != nil {
-			return nil, err
-		}
-		producers[telemetry.Pubsub] = googleProducer
-	}
-
-	if recordNames, ok := requiredDispatchers[telemetry.Kinesis]; ok {
-		if c.Kinesis == nil {
-			return nil, errors.New("Expected Kinesis to be configured")
-		}
-		maxRetries := 1
-		if c.Kinesis.MaxRetries != nil {
-			maxRetries = *c.Kinesis.MaxRetries
-		}
-		streamMapping := c.CreateKinesisStreamMapping(recordNames)
-		kinesis, err := kinesis.NewProducer(maxRetries, streamMapping, c.Kinesis.OverrideHost, c.prometheusEnabled(), c.MetricCollector, airbrakeHandler, c.AckChan, reliableAckSources[telemetry.Kinesis], logger)
-		if err != nil {
-			return nil, err
-		}
-		producers[telemetry.Kinesis] = kinesis
-	}
-
-	if _, ok := requiredDispatchers[telemetry.ZMQ]; ok {
-		if c.ZMQ == nil {
-			return nil, errors.New("Expected ZMQ to be configured")
-		}
-		zmqProducer, err := zmq.NewProducer(context.Background(), c.ZMQ, c.MetricCollector, c.Namespace, airbrakeHandler, c.AckChan, reliableAckSources[telemetry.ZMQ], logger)
-		if err != nil {
-			return nil, err
-		}
-		producers[telemetry.ZMQ] = zmqProducer
-	}
-
 	dispatchProducerRules := make(map[string][]telemetry.Producer)
 	for recordName, dispatchRules := range c.Records {
 		var dispatchFuncs []telemetry.Producer
@@ -363,34 +276,6 @@ func parseValidDispatchers(input []telemetry.Dispatcher) []telemetry.Dispatcher 
 		}
 	}
 	return result
-}
-
-// convertKafkaConfig will prioritize int over float
-// see: https://github.com/confluentinc/confluent-kafka-go/blob/cde2827bc49655eca0f9ce3fc1cda13cb6cdabc9/kafka/config.go#L108-L125
-func convertKafkaConfig(input *confluent.ConfigMap) {
-	for key, val := range *input {
-		if i, ok := val.(float64); ok {
-			(*input)[key] = int(i)
-		}
-	}
-}
-
-// CreateKinesisStreamMapping uses the config, overrides with ENV variable names, and finally falls back to namespace based names
-func (c *Config) CreateKinesisStreamMapping(recordNames []string) map[string]string {
-	streamMapping := make(map[string]string)
-	for _, recordName := range recordNames {
-		if c.Kinesis != nil {
-			streamMapping[recordName] = c.Kinesis.Streams[recordName]
-		}
-		envVarStreamName := os.Getenv(fmt.Sprintf("KINESIS_STREAM_%s", strings.ToUpper(recordName)))
-		if envVarStreamName != "" {
-			streamMapping[recordName] = envVarStreamName
-		}
-		if streamMapping[recordName] == "" {
-			streamMapping[recordName] = telemetry.BuildTopicName(c.Namespace, recordName)
-		}
-	}
-	return streamMapping
 }
 
 // CreateAirbrakeNotifier intializes an airbrake notifier with standard configs
