@@ -3,8 +3,6 @@ package config
 import (
 	"os"
 
-	confluent "github.com/confluentinc/confluent-kafka-go/v2/kafka"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
